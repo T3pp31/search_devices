@@ -7,9 +7,10 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.3", features = ["derive"] }
 ipnetwork = "0.19"
-# GUI 用 egui + egui_glium
+# GUI 用 egui + egui_glium を glutin 0.28 に合わせる
 egui = "0.23"
 egui_glium = "0.23"
-# glium バージョンを egui_glium と合わせて 0.32 に更新
-glium = "0.33"
-glutin = "0.28"
+# glium 0.32 を使用（feature 指定なし）
+glium = "0.32"
+# glutin 0.30 を使用
+glutin = "0.30"
