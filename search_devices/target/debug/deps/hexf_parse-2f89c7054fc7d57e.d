@@ -1,0 +1,5 @@
+C:\github\search_devices\search_devices\target\debug\deps\libhexf_parse-2f89c7054fc7d57e.rmeta: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\hexf-parse-0.2.1\src\lib.rs
+
+C:\github\search_devices\search_devices\target\debug\deps\hexf_parse-2f89c7054fc7d57e.d: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\hexf-parse-0.2.1\src\lib.rs
+
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\hexf-parse-0.2.1\src\lib.rs:

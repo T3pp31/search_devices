@@ -1,23 +1,15 @@
 // 必要なクレートをインポート
-use egui::CentralPanel;  // egui の中心パネルのみ
-// egui + glium バックエンド統合
-use egui_glium::EguiGlium;
-// glium Display と Surface トレイト
-use glium::{Display, Surface};
-// glutin (winit) を glium 経由でインポート
-use glium::glutin::{
-    event::{Event, WindowEvent},
-    event_loop::{EventLoop, ControlFlow},
-    window::WindowBuilder,
-    ContextBuilder,
+use fltk::{
+    prelude::*,
+    app, window::Window, input::Input, button::Button,
+    group::Pack, text::{TextDisplay, TextBuffer}, frame::Frame,
 };
-use std::{process::Command, net::Ipv4Addr};  // ping実行とIPアドレス
-
+use std::{process::Command, net::Ipv4Addr, time::Duration};
 use ipnetwork::Ipv4Network;  // CIDR表記のネットワーク操作
 
 /// ネットワーク文字列を解析し `Ipv4Network` 型を返します
-fn parse_network(segment: &str) -> Ipv4Network {
-    segment.parse().expect("セグメントが不正です (例: 192.168.1.0/24)")
+fn parse_network(segment: &str) -> Option<Ipv4Network> {
+    segment.parse().ok()
 }
 
 /// 指定したIPに ping を実行し、生存を判定します
@@ -46,76 +38,61 @@ fn scan_network(network: Ipv4Network) -> Vec<Ipv4Addr> {
 }
 
 fn main() {
-    // ウィンドウと OpenGL コンテキストのセットアップ
-    let event_loop: EventLoop<()> = EventLoop::new();
-    let wb = WindowBuilder::new().with_title("Ping Scanner GUI");
-    // ContextBuilderでWindowedContextを生成
-    let windowed_context = ContextBuilder::new()
-        .with_vsync(true)
-        .with_srgb(true)
-        .build_windowed(wb, &event_loop)
-        .unwrap();
-    let windowed_context = unsafe { windowed_context.make_current().unwrap() };
-    let window = windowed_context.window().clone();
-    // glium Displayを生成: WindowedContextを渡して作成
-    let display = unsafe { Display::from_gl_window(windowed_context).unwrap() };
+    // FLTKアプリケーションを初期化
+    let app = app::App::default();
+    let mut wind = Window::new(100, 100, 500, 400, "Ping Scanner GUI");
+    let mut pack = Pack::new(0, 0, 500, 400, "");
+    pack.set_spacing(5);
+    // 入力例を示す簡潔な説明ラベル
+    let _label = Frame::new(0, 0, 500, 30, "CIDR形式で入力 (例: 192.168.1.0/24)");
 
-    // egui + glium 統合インスタンス
-    let mut egui = EguiGlium::new(&display, &window, &event_loop);
+    // セグメント入力とスキャンボタン (初期例をセット)
+    let mut input = Input::new(0, 0, 300, 30, "");
+    input.set_value("192.168.1.0/24");
+    let mut btn = Button::new(0, 0, 80, 30, "Scan");
 
-    // アプリ状態
-    let mut segment = String::new();
-    let mut is_scanning = false;
-    let mut results: Vec<Ipv4Addr> = Vec::new();
+    // 結果表示用スクロール付きテキスト
+    // 高さを調整してウィンドウ内に収める
+    let mut display = TextDisplay::new(0, 0, 500, 310, "");
+    let mut buff = TextBuffer::default();
+    display.set_buffer(buff.clone());
 
-    // イベントループ開始
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
-        match event {
-            Event::WindowEvent { event: window_event, .. } => {
-                egui.on_event(&window_event);
-                window.request_redraw();
-            }
-            Event::RedrawRequested(_) => {
-                // egui フレームを実行し、UIを構築
-                egui.run(&window, |ctx| {
-                    CentralPanel::default().show(ctx, |ui| {
-                        ui.heading("Ping Scanner GUI");
-                        ui.horizontal(|ui| {
-                            ui.label("Segment:");
-                            ui.text_edit_singleline(&mut segment);
-                            if ui.button("Scan").clicked() {
-                                results.clear();
-                                is_scanning = true;
-                                results = scan_network(parse_network(&segment));
-                                is_scanning = false;
-                            }
-                        });
-                        ui.separator();
-                        if is_scanning {
-                            ui.label("Scanning...");
+    pack.end();
+    wind.end();
+    wind.show();
+
+    // ボタン押下時、バッファをクリアし、スキャンを別スレッドで実行して per-IP status を送信
+    let (s, r) = app::channel::<(Ipv4Addr, bool)>();
+    btn.set_callback({
+        let inp = input.clone();
+        let s = s.clone();
+        // コールバック内でバッファ用クローンを可変に定義
+        let mut buff_clone = buff.clone();
+        move |_| {
+            // スキャン前にバッファをクリア
+            buff_clone.set_text("");
+            let seg = inp.value();
+            let s = s.clone();
+            std::thread::spawn(move || {
+                if let Some(net) = parse_network(&seg) {
+                    for ip in net.iter() {
+                        if ip == net.network() || ip == net.broadcast() {
+                            continue;
                         }
-                        ui.label("Alive Hosts:");
-                        for ip in &results {
-                            ui.label(ip.to_string());
-                        }
-                    });
-                });
-
-                // 描画準備
-                let mut target = display.draw();
-                // 背景をクリア
-                target.clear_color_srgb(0.1, 0.1, 0.1, 1.0);
-                // UIを描画
-                egui.paint(&display, &mut target);
-                target.finish().unwrap();
-                window.request_redraw();
-            }
-            // ウィンドウ閉じるリクエスト
-            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                *control_flow = ControlFlow::Exit;
-            }
-            _ => {}
+                        let alive = is_alive(&ip);
+                        s.send((ip, alive));
+                    }
+                }
+            });
         }
     });
+
+    // イベントループ
+    while app.wait() {
+        // 各IPごとのステータスを受信して追記表示
+        if let Some((ip, alive)) = r.recv() {
+            let line = format!("{}: {}\n", ip, if alive { "alive" } else { "unreachable" });
+            buff.append(&line);
+        }
+    }
 }
