@@ -1,0 +1,11 @@
+C:\github\search_devices\search_devices\target\debug\deps\libsocket2-14ef5ed11ba4eb93.rmeta: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\lib.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockaddr.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\socket.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockref.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sys\windows.rs
+
+C:\github\search_devices\search_devices\target\debug\deps\libsocket2-14ef5ed11ba4eb93.rlib: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\lib.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockaddr.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\socket.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockref.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sys\windows.rs
+
+C:\github\search_devices\search_devices\target\debug\deps\socket2-14ef5ed11ba4eb93.d: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\lib.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockaddr.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\socket.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockref.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sys\windows.rs
+
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\lib.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockaddr.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\socket.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sockref.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.4.10\src\sys\windows.rs:

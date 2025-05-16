@@ -1,0 +1,12 @@
+C:\github\search_devices\search_devices\target\debug\deps\libdns_lookup-fab206d891f51047.rmeta: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lib.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\addrinfo.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\nameinfo.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\err.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lookup.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\types.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\hostname.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\win.rs
+
+C:\github\search_devices\search_devices\target\debug\deps\dns_lookup-fab206d891f51047.d: C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lib.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\addrinfo.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\nameinfo.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\err.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lookup.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\types.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\hostname.rs C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\win.rs
+
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lib.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\addrinfo.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\nameinfo.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\err.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\lookup.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\types.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\hostname.rs:
+C:\Users\ttyn4\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\dns-lookup-1.0.8\src\win.rs:
