@@ -1,0 +1,13 @@
+# filepath: c:\github\search_devices\search_devices\Cargo.toml
+[package]
+name = "search_devices"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.3", features = ["derive"] }
+ipnetwork = "0.19"
+glium = "0.29"
+egui = "0.23"
+egui_glium = "0.23"
+glutin = "0.29"
