@@ -1,9 +1,13 @@
 // 必要なクレートをインポート
 use egui::{CentralPanel, Context};  // egui の中心パネルとコンテキスト
 use egui_glium::EguiGlium;  // egui + glium バックエンド統合
-use glium::{Display, glutin::{self, event_loop::{EventLoop, ControlFlow}, window::WindowBuilder, ContextBuilder}, Surface};
-use ipnetwork::Ipv4Network;  // CIDR表記のネットワーク操作
+use glium::{Display, Surface};
+use glutin::event_loop::{EventLoop, ControlFlow};  // イベントループをglutinから使用
+use glutin::window::WindowBuilder;    // WindowBuilderをglutinから使用
+use glutin::ContextBuilder;
 use std::{process::Command, net::Ipv4Addr};  // ping実行とIPアドレス
+
+use ipnetwork::Ipv4Network;  // CIDR表記のネットワーク操作
 
 /// ネットワーク文字列を解析し `Ipv4Network` 型を返します
 fn parse_network(segment: &str) -> Ipv4Network {
@@ -39,11 +43,20 @@ fn main() {
     // ウィンドウと OpenGL コンテキストのセットアップ
     let event_loop = EventLoop::new();
     let wb = WindowBuilder::new().with_title("Ping Scanner GUI");
-    let cb = ContextBuilder::new().with_vsync(true).with_srgb(true);
-    let display = Display::new(wb, cb, &event_loop).unwrap();
+    let gl_window = ContextBuilder::new()
+        .with_vsync(true)
+        .with_srgb(true)
+        .build_windowed(wb, &event_loop)
+        .unwrap();
+    // OpenGLコンテキストをcurrentにする
+    let gl_window = unsafe { gl_window.make_current().unwrap() };
+    // winitのWindowを取得
+    let window = gl_window.window().clone();
+    // glium Displayを生成
+    let display = unsafe { Display::from_context_surface(gl_window.context().unwrap(), gl_window).unwrap() };
 
-    // egui + glium 統合インスタンス
-    let mut egui = EguiGlium::new(&display);
+    // egui + glium 統合インスタンス (Display, Window, EventLoop を渡す)
+    let mut egui = EguiGlium::new(&display, window, &event_loop);
 
     // アプリ状態
     let mut segment = String::new();
@@ -52,49 +65,59 @@ fn main() {
 
     // イベントループ開始
     event_loop.run(move |event, _, control_flow| {
-        // egui にイベントを通知
-        egui.on_event(&event);
-
-        match event {
-            // ウィンドウ閉じるリクエスト
-            glutin::event::Event::WindowEvent { event: glutin::event::WindowEvent::CloseRequested, .. } => {
-                *control_flow = ControlFlow::Exit;
+        match &event {
+            // ウィンドウイベントはeguiに通知
+            glutin::event::Event::WindowEvent { event, .. } => {
+                egui.on_event(&event);
+                // UI更新のためリクエスト
+                window.request_redraw();
             }
-            // 再描画要求
-            glutin::event::Event::RedrawRequested(_) => {
-                // egui フレームを実行
-                let repaint = egui.run(&display, |ctx: &Context| {
-                    CentralPanel::default().show(ctx, |ui| {
-                        ui.heading("Ping Scanner GUI");
-                        ui.horizontal(|ui| {
-                            ui.label("Segment:");
-                            ui.text_edit_singleline(&mut segment);
-                            if ui.button("Scan").clicked() {
-                                // スキャン処理
-                                results.clear();
-                                is_scanning = true;
-                                let network = parse_network(&segment);
-                                results = scan_network(network);
-                                is_scanning = false;
-                            }
-                        });
-                        ui.separator();
-                        if is_scanning {
-                            ui.label("Scanning...");
-                        }
-                        ui.label("Alive Hosts:");
-                        for ip in &results {
-                            ui.label(ip.to_string());
+            _ => {}
+        }
+
+        if let glutin::event::Event::RedrawRequested(_) = event {
+            // egui フレームを実行し、UIを構築
+            let needs_repaint = egui.run(&display, |ctx: &Context| {
+                CentralPanel::default().show(ctx, |ui| {
+                    ui.heading("Ping Scanner GUI");
+                    ui.horizontal(|ui| {
+                        ui.label("Segment:");
+                        ui.text_edit_singleline(&mut segment);
+                        if ui.button("Scan").clicked() {
+                            results.clear();
+                            is_scanning = true;
+                            let network = parse_network(&segment);
+                            results = scan_network(network);
+                            is_scanning = false;
                         }
                     });
+                    ui.separator();
+                    if is_scanning {
+                        ui.label("Scanning...");
+                    }
+                    ui.label("Alive Hosts:");
+                    for ip in &results {
+                        ui.label(ip.to_string());
+                    }
                 });
-                // 再描画ループ継続
-                if repaint {
-                    display.gl_window().window().request_redraw();
-                }
+            });
+
+            // 描画準備
+            let mut target = display.draw();
+            target.clear_color(0.1, 0.1, 0.1, 1.0);
+            // UIを描画
+            egui.paint(&display, &mut target);
+            target.finish().unwrap();
+
+            // 再描画が必要ならリクエスト
+            if needs_repaint {
+                window.request_redraw();
             }
-            // その他: 必要に応じて再描画トリガ
-            _ => {}
+        }
+
+        // ウィンドウ閉じるリクエスト
+        if let glutin::event::Event::WindowEvent { event: glutin::event::WindowEvent::CloseRequested, .. } = event {
+            *control_flow = ControlFlow::Exit;
         }
     });
 }
