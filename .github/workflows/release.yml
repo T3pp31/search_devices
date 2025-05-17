@@ -4,16 +4,16 @@ name: Release
 permissions:
   contents: write
 
-on:
-  push:
-    tags:
-    - v*
-
-# githubActionをテストするとき、わざわざタグを作るのはめんどいのでプッシュトリガー
 # on:
 #   push:
-#     branches:
-#       - main
+#     tags:
+#     - v*
+
+# githubActionをテストするとき、わざわざタグを作るのはめんどいのでプッシュトリガー
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
