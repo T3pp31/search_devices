@@ -72,7 +72,7 @@ fn main() {
     let mut scan_list_btn = Button::new(320, 70, 80, 30, "Scan List");
     let mut stop_list_btn = Button::new(410, 70, 80, 30, "Stop");
     let mut display_list = TextDisplay::new(10, 180, 480, 200, "");
-    let mut buff_list = TextBuffer::default();
+    let buff_list = TextBuffer::default();
     display_list.set_buffer(buff_list.clone());
     let running_list = Arc::new(AtomicBool::new(false));
     // Note: コールバック内でバッファをクリアするため `buff2` を利用します
@@ -85,8 +85,7 @@ fn main() {
 
     // CIDR用チャネル
     let (s, r) = app::channel::<(Ipv4Addr, bool, String)>();
-    // IPリスト用チャネル（非同期スキャン向け）
-    let (s2, r2) = app::channel::<(Ipv4Addr, bool, String)>();
+    // IPリストでは同期スキャンを使用してチャンネルは不要
 
     // 停止ボタンのコールバック
     {
@@ -141,7 +140,6 @@ fn main() {
     // IPリスト用スキャンボタン（非同期処理）
     scan_list_btn.set_callback({
         let input_cb = list_input.clone();
-        let s2 = s2.clone();
         let running_flag = running_list.clone();
         let mut buf_clone = buff_list.clone();
         move |_| {
@@ -150,35 +148,31 @@ fn main() {
             // ヘッダー表示
             let header = format!("{:<15} {:<12} {}\n", "IP Address", "Status", "Host Info");
             buf_clone.set_text(&header);
-            // 入力取得
-            let lines: Vec<String> = input_cb.value()
+            // デバッグ: 入力行をUI上に表示
+            let raw = input_cb.value();
+            let lines: Vec<String> = raw
                 .lines()
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
+            buf_clone.append(&format!("[Debug] lines to scan: {:?}\n", lines));
             if lines.is_empty() {
                 buf_clone.append("[Error] IPアドレスが入力されていません\n");
                 running_flag.store(false, Ordering::SeqCst);
                 return;
             }
-            // バックグラウンドでスキャン (Arc を内部でクローンして使用)
-            {
-                let flag_thread = running_flag.clone();
-                let s2_thread = s2.clone();
-                std::thread::spawn(move || {
-                    for ip_str in lines {
-                        if !flag_thread.load(Ordering::SeqCst) { break }
-                        let (ip, alive, host) = if let Ok(addr) = ip_str.parse::<Ipv4Addr>() {
-                            (addr, is_alive(&addr), lookup_addr(&IpAddr::V4(addr)).unwrap_or_default())
-                        } else {
-                            (Ipv4Addr::UNSPECIFIED, false, "Invalid IP".into())
-                        };
-                        // main スレッドへ送信
-                        s2_thread.send((ip, alive, host));
-                    }
-                    flag_thread.store(false, Ordering::SeqCst);
-                });
+            // 同期スキャン: UI スレッド上で直接バッファに結果を追加
+            for ip_str in lines.clone() {
+                if !running_flag.load(Ordering::SeqCst) { break }
+                if let Ok(addr) = ip_str.parse::<Ipv4Addr>() {
+                    let alive = is_alive(&addr);
+                    let host_info = lookup_addr(&IpAddr::V4(addr)).unwrap_or_default();
+                    buf_clone.append(&format!("{:<15} {:<12} {}\n", addr, if alive { "alive" } else { "unreachable" }, host_info));
+                } else {
+                    buf_clone.append(&format!("{:<15} {:<12} {}\n", Ipv4Addr::UNSPECIFIED, "invalid", "Invalid IP"));
+                }
             }
+            running_flag.store(false, Ordering::SeqCst);
         }
     });
 
@@ -188,11 +182,6 @@ fn main() {
         if let Some((ip, alive, host)) = r.recv() {
             let status = if alive { "alive" } else { "unreachable" };
             buff.append(&format!("{:<15} {:<12} {}\n", ip, status, host));
-        }
-        // IPリストタブ結果
-        if let Some((ip, alive, host)) = r2.recv() {
-            let status = if alive { "alive" } else { "unreachable" };
-            buff_list.append(&format!("{:<15} {:<12} {}\n", ip, status, host));
         }
     }
 }
