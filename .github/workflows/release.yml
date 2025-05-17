@@ -5,17 +5,15 @@ permissions:
   contents: write
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag'
-        required: true
   push:
     tags:
-      - 'v*'
-  push:
-    branches:
-      - main
+    - v*
+
+# githubActionをテストするとき、わざわざタグを作るのはめんどいのでプッシュトリガー
+# on:
+#   push:
+#     branches:
+#       - main
 
 jobs:
   build:
@@ -82,7 +80,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.event.inputs.tag || github.ref_name }}
         files: |
           search_devices/target/${{ matrix.job.target }}/release/search_devices.exe
           search_devices/target/${{ matrix.job.target }}/debug/search_devicesDebug.exe
