@@ -1,0 +1,86 @@
+name: Release
+
+# Releasesへのファイル追加のために書き込み権限が必要
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+    - v*
+
+# githubActionをテストするとき、わざわざタグを作るのはめんどいのでプッシュトリガー
+# on:
+#   push:
+#     branches:
+#       - main
+
+jobs:
+  build:
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - { os: windows-latest , target: x86_64-pc-windows-msvc         , use-cross: false , extension: .exe }
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ matrix.job.target }}
+        override: true
+        profile: minimal
+
+    - name: Build-release
+      run: cargo build --release --target ${{ matrix.job.target }}
+      working-directory: search_devices
+
+    - name: Build-Debug
+      run: cargo build --target ${{ matrix.job.target}}
+      working-directory: search_devices
+
+    - name: Make-doc
+      run: cargo doc --no-deps --target ${{ matrix.job.target }}
+      working-directory: search_devices
+    - name: Archive documentation
+      run: |
+        mkdir -p document
+        cp -r target/${{ matrix.job.target}}/doc/* document/
+        Compress-Archive -Path document -DestinationPath document.zip
+      working-directory: search_devices
+
+
+    # - name: Rename artifacts
+    #   shell: bash
+    #   run: |
+    #     # ディレクトリ内のファイルをリストしてデバッグ
+    #     echo "Files in target directory:"
+    #     ls -la target/x86_64-pc-windows-msvc/release/
+
+    #     # ファイルのリネーム
+    #     mv target/${{ matrix.job.target }}/release/search_devices.exe \
+    #        target/${{ matrix.job.target }}/release/search_devices-${{ github.ref_name }}-${{ matrix.job.target }}${{ matrix.job.extension }}
+    #   working-directory: search_devices
+    # - name: Create release tag
+    #   run: |
+    #     git tag v1.0.0
+
+    - name: Rename Debug
+      shell: bash
+      run: |
+        mv search_devices/target/${{ matrix.job.target }}/debug/search_devices.exe \
+           search_devices/target/${{ matrix.job.target }}/debug/search_devicesDebug.exe
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: |
+          search_devices/target/${{ matrix.job.target }}/release/search_devices.exe
+          search_devices/target/${{ matrix.job.target }}/debug/search_devicesDebug.exe
+          search_devices/document.zip

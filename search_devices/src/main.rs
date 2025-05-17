@@ -53,13 +53,22 @@ fn main() {
     let cidr_group = Group::new(0, 25, 500, 375, "CIDR");
     cidr_group.begin();
     let _label = Frame::new(10, 30, 480, 30, "CIDR形式で入力 (例: 192.168.1.0/24)");
-    let mut input = Input::new(10, 70, 300, 30, "");
+    let mut input = Input::new(10, 70, 200, 30, "");
     input.set_value("192.168.1.0/24");
     let mut btn = Button::new(320, 70, 80, 30, "Scan");
     let mut stop_btn = Button::new(410, 70, 80, 30, "Stop");
+    // クリアボタンを追加
+    let mut clear_btn = Button::new(240, 70, 80, 30, "Clear");
     let mut display = TextDisplay::new(10, 110, 480, 260, "");
     let mut buff = TextBuffer::default();
     display.set_buffer(buff.clone());
+    // クリアボタンのコールバック
+    {
+        let mut buff_clone = buff.clone();
+        clear_btn.set_callback(move |_| {
+            buff_clone.set_text("");
+        });
+    }
     let running = Arc::new(AtomicBool::new(false));
     cidr_group.end();
 
@@ -68,12 +77,21 @@ fn main() {
     let list_group = Group::new(0, 25, 500, 375, "IP List");
     list_group.begin();
     let _list_label = Frame::new(10, 30, 480, 30, "Enter IP addresses (one per line)");
-    let list_input = MultilineInput::new(10, 70, 300, 100, "");
+    let list_input = MultilineInput::new(10, 70, 200, 100, "");
     let mut scan_list_btn = Button::new(320, 70, 80, 30, "Scan List");
     let mut stop_list_btn = Button::new(410, 70, 80, 30, "Stop");
+    // クリアボタンを追加
+    let mut clear_list_btn = Button::new(240, 70, 80, 30, "Clear");
     let mut display_list = TextDisplay::new(10, 180, 480, 200, "");
     let buff_list = TextBuffer::default();
     display_list.set_buffer(buff_list.clone());
+    // クリアボタンのコールバック
+    {
+        let mut buff_clone = buff_list.clone();
+        clear_list_btn.set_callback(move |_| {
+            buff_clone.set_text("");
+        });
+    }
     let running_list = Arc::new(AtomicBool::new(false));
     // Note: コールバック内でバッファをクリアするため `buff2` を利用します
 
