@@ -87,7 +87,8 @@ fn main() {
     let list_group = Group::new(0, 25, 500, 375, "IP List");
     list_group.begin();
     let _list_label = Frame::new(10, 30, 480, 30, "Enter IP addresses (one per line)");
-    let list_input = MultilineInput::new(10, 70, 200, 100, "");
+    let mut list_input = MultilineInput::new(10, 70, 200, 100, "");
+    list_input.set_value("192.168.0.1\n192.168.0.2");
     let mut scan_list_btn = Button::new(320, 70, 80, 30, "Scan List");
     let mut stop_list_btn = Button::new(410, 70, 80, 30, "Stop");
     // クリアボタンを追加
