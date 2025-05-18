@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // 必要なクレートをインポート
 use fltk::{
     prelude::*,
@@ -7,6 +8,8 @@ use fltk::{
 use std::{process::Command, net::{Ipv4Addr, IpAddr}, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 use ipnetwork::Ipv4Network;  // CIDR表記のネットワーク操作
 use dns_lookup::lookup_addr;
+use std::os::windows::process::CommandExt; // Windows向けプロセスフラグ用トレイト
+const CREATE_NO_WINDOW: u32 = 0x08000000; // WinAPI: コンソールウィンドウを生成しない
 
 /// ネットワーク文字列を解析し `Ipv4Network` 型を返します
 fn parse_network(segment: &str) -> Option<Ipv4Network> {
@@ -21,8 +24,15 @@ fn is_alive(ip: &Ipv4Addr) -> bool {
     } else {
         ["-c", "1", "-W", "1", &ip_str]
     };
-    Command::new("ping").args(&args)
-        .output().map(|o| o.status.success()).unwrap_or(false)
+    // pingコマンドを生成し、Windowsではコンソールウィンドウを非表示に
+    let mut cmd = Command::new("ping");
+    #[cfg(windows)] {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.args(&args)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 /// ネットワーク内の生存ホストを返します
@@ -121,8 +131,9 @@ fn main() {
         move |_| {
             // スキャン開始
             running_flag.store(true, Ordering::SeqCst);
-            // ヘッダー行
-            let header = format!("{:<15} {:<12} {}\n", "IP Address", "Status", "Host Info");
+            // ヘッダー行：Result 列を追加
+            let header = format!("{:<15} {:<7} {:<12} {}\n",
+                "IP Address", "Result", "Status", "Host Info");
             buff_clone.set_text(&header);
             let seg = inp.value();
             let s = s.clone();
@@ -163,8 +174,9 @@ fn main() {
         move |_| {
             // スキャン開始
             running_flag.store(true, Ordering::SeqCst);
-            // ヘッダー表示
-            let header = format!("{:<15} {:<12} {}\n", "IP Address", "Status", "Host Info");
+            // ヘッダー行：Result 列を追加
+            let header = format!("{:<15} {:<7} {:<12} {}\n",
+                "IP Address", "Result", "Status", "Host Info");
             buf_clone.set_text(&header);
             // デバッグ: 入力行をUI上に表示
             let raw = input_cb.value();
@@ -173,7 +185,6 @@ fn main() {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect();
-            buf_clone.append(&format!("[Debug] lines to scan: {:?}\n", lines));
             if lines.is_empty() {
                 buf_clone.append("[Error] IPアドレスが入力されていません\n");
                 running_flag.store(false, Ordering::SeqCst);
@@ -184,10 +195,18 @@ fn main() {
                 if !running_flag.load(Ordering::SeqCst) { break }
                 if let Ok(addr) = ip_str.parse::<Ipv4Addr>() {
                     let alive = is_alive(&addr);
+                    let status = if alive { "alive" } else { "unreachable" };
                     let host_info = lookup_addr(&IpAddr::V4(addr)).unwrap_or_default();
-                    buf_clone.append(&format!("{:<15} {:<12} {}\n", addr, if alive { "alive" } else { "unreachable" }, host_info));
+                    let mark = if alive { "〇" } else { "×" };
+                    buf_clone.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                        addr, mark, status, host_info));
                 } else {
-                    buf_clone.append(&format!("{:<15} {:<12} {}\n", Ipv4Addr::UNSPECIFIED, "invalid", "Invalid IP"));
+                    buf_clone.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                        Ipv4Addr::UNSPECIFIED,
+                        "×",
+                        "invalid",
+                        "Invalid IP"
+                    ));
                 }
             }
             running_flag.store(false, Ordering::SeqCst);
@@ -196,10 +215,11 @@ fn main() {
 
     // イベントループ
     while app.wait() {
-        // CIDRタブ結果
-        if let Some((ip, alive, host)) = r.recv() {
+        if let Some((ip, alive, host_info)) = r.recv() {
             let status = if alive { "alive" } else { "unreachable" };
-            buff.append(&format!("{:<15} {:<12} {}\n", ip, status, host));
+            let mark = if alive { "〇" } else { "×" };
+            buff.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                ip, mark, status, host_info));
         }
     }
 }
