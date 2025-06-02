@@ -3,6 +3,7 @@ use fltk::{prelude::*, app, window::Window, group::Tabs, enums::FrameType};
 use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
+mod env_tab;
 
 fn main() {
     // FLTKアプリケーションを初期化
@@ -18,6 +19,7 @@ fn main() {
     // タブ構築
     let (_running, mut buff) = cidr_tab::build_cidr_tab(s);
     let (_running_list, mut buff_list, _list_input, _scan_list_btn, _stop_list_btn, _clear_list_btn, _display_list) = ip_list_tab::build_ip_list_tab();
+    let _env_group = env_tab::build_env_tab();
 
     tabs.end();
     wind.end();
