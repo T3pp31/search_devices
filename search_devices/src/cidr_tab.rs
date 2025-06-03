@@ -7,7 +7,7 @@ use fltk::{
     text::{TextDisplay, TextBuffer},
     app,
 };
-use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{AtomicBool, Ordering}}, time::Duration};
 use ipnetwork::Ipv4Network;
 use dns_lookup::lookup_addr;
 use std::os::windows::process::CommandExt;
@@ -15,7 +15,14 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// CIDRタブを構築し、実行フラグと結果バッファを返します
-pub fn build_cidr_tab(sender: app::Sender<(Ipv4Addr, bool, String)>) -> (Arc<AtomicBool>, TextBuffer) {
+pub fn build_cidr_tab(
+    sender: app::Sender<(Ipv4Addr, bool, String)>,
+    input_repeat: fltk::input::IntInput,
+    input_interval: fltk::input::IntInput,
+    input_block: fltk::input::IntInput,
+    input_timeout: fltk::input::IntInput,
+    input_ttl: fltk::input::IntInput,
+) -> (Arc<AtomicBool>, TextBuffer) {
     let cidr_group = Group::new(0, 25, 500, 375, "CIDR");
     cidr_group.begin();
     Frame::new(10, 30, 480, 30, "CIDR形式で入力 (例: 192.168.1.0/24)");
@@ -42,12 +49,15 @@ pub fn build_cidr_tab(sender: app::Sender<(Ipv4Addr, bool, String)>) -> (Arc<Ato
         let flag = running.clone();
         let mut buf_clone = buff.clone();
         scan_btn.set_callback(move |_| {
-            // 実行フラグを立てる
             flag.store(true, Ordering::SeqCst);
-            // ヘッダーを表示
             buf_clone.set_text(&format!("{:<15} {:<7} {:<12} {}\n",
                 "IP Address", "Result", "Status", "Host Info"));
             let seg = inp.value();
+            let rep = input_repeat.clone();
+            let to = input_timeout.clone();
+            let bs = input_block.clone();
+            let ttl = input_ttl.clone();
+            let iv = input_interval.clone();
             let thread_flag = flag.clone();
             let sender_inner = s.clone();
             std::thread::spawn(move || {
@@ -55,25 +65,36 @@ pub fn build_cidr_tab(sender: app::Sender<(Ipv4Addr, bool, String)>) -> (Arc<Ato
                     for ip in net.iter() {
                         if !thread_flag.load(Ordering::SeqCst) { break }
                         if ip == net.network() || ip == net.broadcast() { continue }
-                        // ping 実行
+                        // 最新のEnv設定を読み込む
+                        let repeat = rep.value().parse::<u32>().unwrap_or(1);
+                        let timeout = to.value().parse::<u32>().unwrap_or(1000);
+                        let block_size = bs.value().parse::<u32>().unwrap_or(64);
+                        let time_to_live = ttl.value().parse::<u32>().unwrap_or(128);
+                        let interval_ms = iv.value().parse::<u64>().unwrap_or(1000);
+                        // ping実行
                         let alive = {
                             let mut cmd = Command::new("ping");
                             cmd.creation_flags(CREATE_NO_WINDOW);
-                            cmd.args(&["-n", "1", "-w", "1000", &ip.to_string()])
-                                .output()
-                                .map(|o| o.status.success())
-                                .unwrap_or(false)
+                            cmd.args(&[
+                                "-n", &repeat.to_string(),
+                                "-w", &timeout.to_string(),
+                                "-l", &block_size.to_string(),
+                                "-i", &time_to_live.to_string(),
+                                &ip.to_string(),
+                            ]).
+                            output().map(|o| o.status.success()).unwrap_or(false)
                         };
+                        // Envで指定した間隔待機
+                        std::thread::sleep(Duration::from_millis(interval_ms));
                         let host_info = lookup_addr(&IpAddr::V4(ip)).unwrap_or_default();
                         sender_inner.send((ip, alive, host_info));
                     }
                 }
-                // 実行完了フラグを倒す
                 thread_flag.store(false, Ordering::SeqCst);
             });
         });
     }
-    // 停止
+    // 停止: フラグを折る
     {
         let flag = running.clone();
         stop_btn.set_callback(move |_| {

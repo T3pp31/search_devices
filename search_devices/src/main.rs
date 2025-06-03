@@ -17,9 +17,22 @@ fn main() {
     let (s, r) = app::channel::<(Ipv4Addr, bool, String)>();
 
     // タブ構築
-    let (_running, mut buff) = cidr_tab::build_cidr_tab(s);
-    let (_running_list, mut buff_list, _list_input, _scan_list_btn, _stop_list_btn, _clear_list_btn, _display_list) = ip_list_tab::build_ip_list_tab();
-    let _env_group = env_tab::build_env_tab();
+    let (_env_group, input_repeat, input_interval, input_block, input_timeout, input_ttl) = env_tab::build_env_tab();
+    let (_running, mut buff) = cidr_tab::build_cidr_tab(
+        s,
+        input_repeat.clone(),
+        input_interval.clone(),
+        input_block.clone(),
+        input_timeout.clone(),
+        input_ttl.clone(),
+    );
+    let (_running_list, mut buff_list, _list_input, _scan_list_btn, _stop_list_btn, _clear_list_btn, _display_list) = ip_list_tab::build_ip_list_tab(
+        input_repeat,
+        input_interval,
+        input_block,
+        input_timeout,
+        input_ttl,
+    );
 
     tabs.end();
     wind.end();

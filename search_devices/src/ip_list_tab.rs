@@ -7,17 +7,17 @@ use fltk::{
     text::{TextDisplay, TextBuffer},
     app,
 };
-use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{AtomicBool, Ordering}}};
+use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{AtomicBool, Ordering}}, time::Duration};
 use dns_lookup::lookup_addr;
 use std::os::windows::process::CommandExt;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// 指定した IP に ping を実行し、生存を判定します
-fn is_alive(ip: &Ipv4Addr) -> bool {
+fn is_alive(ip: &Ipv4Addr, repeat: u32, timeout: u32, block_size: u32, ttl: u32) -> bool {
     let ip_str = ip.to_string();
     // Windows 用の引数
-    let args = ["-n", "1", "-w", "1000", &ip_str];
+    let args = ["-n", &repeat.to_string(), "-w", &timeout.to_string(), "-l", &block_size.to_string(), "-i", &ttl.to_string(), &ip_str];
     let mut cmd = Command::new("ping");
     cmd.creation_flags(CREATE_NO_WINDOW);
     cmd.args(&args)
@@ -27,7 +27,13 @@ fn is_alive(ip: &Ipv4Addr) -> bool {
 }
 
 /// IPリストタブを構築し、実行中フラグと結果バッファを返します
-pub fn build_ip_list_tab() -> (Arc<AtomicBool>, TextBuffer, MultilineInput, Button, Button, Button, TextDisplay) {
+pub fn build_ip_list_tab(
+    input_repeat: fltk::input::IntInput,
+    input_interval: fltk::input::IntInput,
+    input_block: fltk::input::IntInput,
+    input_timeout: fltk::input::IntInput,
+    input_ttl: fltk::input::IntInput,
+) -> (Arc<AtomicBool>, TextBuffer, MultilineInput, Button, Button, Button, TextDisplay) {
     let list_group = Group::new(0, 25, 500, 375, "IP List");
     list_group.begin();
     Frame::new(10, 30, 480, 30, "Enter IP addresses (one per line)");
@@ -52,6 +58,12 @@ pub fn build_ip_list_tab() -> (Arc<AtomicBool>, TextBuffer, MultilineInput, Butt
         let inp = input.clone();
         let flag = running.clone();
         let mut buf_clone = buff.clone();
+        // Envタブの設定取得用クローン
+        let repeat_input = input_repeat.clone();
+        let interval_input = input_interval.clone();
+        let block_input = input_block.clone();
+        let timeout_input = input_timeout.clone();
+        let ttl_input = input_ttl.clone();
         scan_btn.set_callback(move |_| {
             flag.store(true, Ordering::SeqCst);
             // ヘッダー行：Result 列を追加
@@ -74,7 +86,15 @@ pub fn build_ip_list_tab() -> (Arc<AtomicBool>, TextBuffer, MultilineInput, Butt
             for ip_str in lines {
                 if !flag.load(Ordering::SeqCst) { break }
                 if let Ok(addr) = ip_str.parse::<Ipv4Addr>() {
-                    let alive = is_alive(&addr);
+                    // Env設定から値をパース
+                    let repeat = repeat_input.value().parse::<u32>().unwrap_or(1);
+                    let interval = interval_input.value().parse::<u64>().unwrap_or(1000);
+                    let block_size = block_input.value().parse::<u32>().unwrap_or(64);
+                    let timeout = timeout_input.value().parse::<u32>().unwrap_or(1000);
+                    let ttl = ttl_input.value().parse::<u32>().unwrap_or(128);
+                    let alive = is_alive(&addr, repeat, timeout, block_size, ttl);
+                    // Envで指定したインターバルを待機
+                    std::thread::sleep(Duration::from_millis(interval));
                     let status = if alive { "alive" } else { "unreachable" };
                     let host_info = lookup_addr(&IpAddr::V4(addr)).unwrap_or_default();
                     let mark = if alive { "〇" } else { "×" };
