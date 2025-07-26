@@ -5,7 +5,6 @@ use fltk::{
     input::MultilineInput,
     button::Button,
     text::{TextDisplay, TextBuffer},
-    app,
 };
 use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{AtomicBool, Ordering}}};
 use dns_lookup::lookup_addr;
@@ -31,12 +30,13 @@ pub fn build_ip_list_tab() -> (Arc<AtomicBool>, TextBuffer, MultilineInput, Butt
     let list_group = Group::new(0, 25, 500, 375, "IP List");
     list_group.begin();
     Frame::new(10, 30, 480, 30, "Enter IP addresses (one per line)");
-    let mut input = MultilineInput::new(10, 70, 200, 100, "");
+    let mut input = MultilineInput::new(10, 70, 200, 150, "");  // 高さを150に増加
     input.set_value("192.168.0.1\n192.168.0.2\n192.168.0.3");
+    input.wrap();  // 自動改行を有効化
     let mut scan_btn = Button::new(320, 70, 80, 30, "Scan List");
     let mut stop_btn = Button::new(410, 70, 80, 30, "Stop");
     let mut clear_btn = Button::new(240, 70, 80, 30, "Clear");
-    let mut display = TextDisplay::new(10, 180, 480, 200, "");
+    let mut display = TextDisplay::new(10, 230, 480, 150, "");  // Y位置を230に、高さを150に調整
     let buff = TextBuffer::default();
     display.set_buffer(buff.clone());
     // クリア処理
