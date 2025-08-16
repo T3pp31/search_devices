@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use fltk::{prelude::*, app, window::Window, group::Tabs, enums::FrameType};
+use fltk::{prelude::*, app, window::Window, group::{Tabs, Group}, enums::FrameType};
 use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
@@ -12,23 +12,70 @@ fn main() {
     tabs.set_frame(FrameType::DownBox);
     tabs.begin();
 
-    // チャネル初期化 (CIDR用のみ)
-    let (s, r) = app::channel::<(Ipv4Addr, bool, String)>();
+    // 単一チャネルでタブIDによる振り分け方式
+    let (sender, receiver) = app::channel::<(String, Ipv4Addr, bool, String)>();
+    println!("[Debug] Main: Shared channel - sender: {:p}, receiver: {:p}", &sender, &receiver);
 
-    // タブ構築
-    let (_running, mut buff) = cidr_tab::build_cidr_tab(s);
-    let (_running_list, mut buff_list, _list_input, _scan_list_btn, _stop_list_btn, _clear_list_btn, _display_list) = ip_list_tab::build_ip_list_tab();
+    // CIDRタブの構築
+    let cidr_group = Group::new(0, 25, 500, 375, "CIDR");
+    cidr_group.begin();
+    let (_running, mut buff) = cidr_tab::build_cidr_tab(sender.clone());
+    println!("[Debug] Main received CIDR buffer: {:p}", &buff);
+    cidr_group.end();
+    
+    // IP Listタブの構築
+    let list_group = Group::new(0, 25, 500, 375, "IP List");
+    list_group.begin();
+    let (_running_list, mut buff_list, display_list) = ip_list_tab::build_ip_list_tab(sender.clone());
+    println!("[Debug] Main received IP List buffer: {:p}", &buff_list);
+    list_group.end();
 
     tabs.end();
     wind.end();
     wind.show();
 
-    // イベントループ: CIDRタブの結果を処理
+    // イベントループ
+    println!("[Debug] Starting event loop");
     while app.wait() {
-        if let Some((ip, alive, host_info)) = r.recv() {
+        // 単一チャンネルから受信してタブIDで振り分け
+        if let Some((tab_id, ip, alive, host_info)) = receiver.recv() {
+            println!("[Debug] Received result: tab_id={}, IP: {}, alive: {}", tab_id, ip, alive);
+            
             let mark = if alive { "〇" } else { "×" };
-            buff.append(&format!("{:<15} {:<7} {:<12} {}\n",
-                ip, mark, if alive { "alive" } else { "unreachable" }, host_info));
+            let status = if alive { "alive" } else { "unreachable" };
+            
+            match tab_id.as_str() {
+                "CIDR" => {
+                    println!("[Debug] Processing CIDR result");
+                    buff.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                        ip, mark, status, host_info));
+                }
+                "IPLIST" => {
+                    println!("[Debug] Processing IP List result");
+                    // 無効なIPアドレスの場合の処理
+                    if ip == Ipv4Addr::UNSPECIFIED && !alive && host_info == "Invalid IP" {
+                        buff_list.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                            "Invalid", "×", "invalid", "Invalid IP"));
+                    } else {
+                        buff_list.append(&format!("{:<15} {:<7} {:<12} {}\n",
+                            ip, mark, status, host_info));
+                    }
+                    println!("[Debug] Appended to buff_list - current text length: {}", buff_list.text().len());
+                    
+                    // TextDisplayを明示的に更新
+                    if let Ok(mut display) = display_list.lock() {
+                        display.redraw();
+                        println!("[Debug] IP List display redrawn");
+                    }
+                    
+                    // UIを更新
+                    app::awake();
+                    app::redraw();
+                }
+                _ => {
+                    println!("[Debug] Unknown tab_id: {}", tab_id);
+                }
+            }
         }
     }
 }
