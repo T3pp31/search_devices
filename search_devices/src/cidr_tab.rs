@@ -1,7 +1,7 @@
 use fltk::{
     prelude::*,
     frame::Frame,
-    input::Input,
+    input::{Input, IntInput},
     button::Button,
     text::{TextDisplay, TextBuffer},
     app,
@@ -23,7 +23,16 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
     let mut scan_btn = Button::new(320, 70, 80, 30, "Scan");
     let mut stop_btn = Button::new(410, 70, 80, 30, "Stop");
     let mut clear_btn = Button::new(240, 70, 80, 30, "Clear");
-    let mut display = TextDisplay::new(10, 110, 480, 260, "");
+
+    // Ping設定（Count / Timeout）
+    let _count_label = Frame::new(10, 110, 60, 25, "Count");
+    let mut count_inp = IntInput::new(70, 110, 60, 25, "");
+    count_inp.set_value("1");
+    let _timeout_label = Frame::new(140, 110, 100, 25, "Timeout(ms)");
+    let mut timeout_inp = IntInput::new(240, 110, 80, 25, "");
+    timeout_inp.set_value("1000");
+
+    let mut display = TextDisplay::new(10, 140, 480, 230, "");
     let buff = TextBuffer::default();
     println!("[Debug] CIDR buffer created: {:p}", &buff);
     display.set_buffer(buff.clone());
@@ -42,6 +51,8 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
         println!("[Debug] CIDR: Using sender channel: {:p}", &s);
         let flag = running.clone();
         let mut buf_clone = buff.clone();
+        let cnt_inp = count_inp.clone();
+        let to_inp = timeout_inp.clone();
         scan_btn.set_callback(move |_| {
             // 実行フラグを立てる
             flag.store(true, Ordering::SeqCst);
@@ -51,6 +62,9 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
             let seg = inp.value();
             let thread_flag = flag.clone();
             let sender_inner = s.clone();
+            // 設定値の取得
+            let count: u32 = cnt_inp.value().parse().ok().filter(|v| *v >= 1).unwrap_or(1);
+            let timeout_ms: u32 = to_inp.value().parse().ok().filter(|v| *v >= 1).unwrap_or(1000);
             std::thread::spawn(move || {
                 if let Ok(net) = seg.parse::<Ipv4Network>() {
                     for ip in net.iter() {
@@ -59,18 +73,20 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
                         // ping 実行
                         let alive = {
                             let mut cmd = Command::new("ping");
-                            
+
                             #[cfg(windows)]
                             {
                                 cmd.creation_flags(CREATE_NO_WINDOW);
-                                cmd.args(&["-n", "1", "-w", "1000", &ip.to_string()]);
+                                cmd.args(&["-n", &count.to_string(), "-w", &timeout_ms.to_string(), &ip.to_string()]);
                             }
-                            
+
                             #[cfg(not(windows))]
                             {
-                                cmd.args(&["-c", "1", "-W", "1", &ip.to_string()]);
+                                // Linuxの-Wは秒。ミリ秒→切り上げ秒へ変換
+                                let secs = std::cmp::max(1u32, (timeout_ms + 999) / 1000);
+                                cmd.args(&["-c", &count.to_string(), "-W", &secs.to_string(), &ip.to_string()]);
                             }
-                            
+
                             cmd.output()
                                 .map(|o| o.status.success())
                                 .unwrap_or(false)

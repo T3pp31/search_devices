@@ -1,7 +1,7 @@
 use fltk::{
     prelude::*,
     frame::Frame,
-    input::MultilineInput,
+    input::{MultilineInput, IntInput},
     button::Button,
     text::{TextDisplay, TextBuffer},
     app,
@@ -15,14 +15,14 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// 指定した IP に ping を実行し、生存を判定します
-fn is_alive(ip: &Ipv4Addr) -> bool {
+fn is_alive(ip: &Ipv4Addr, count: u32, timeout_ms: u32) -> bool {
     let ip_str = ip.to_string();
     let mut cmd = Command::new("ping");
     
     #[cfg(windows)]
     {
         // Windows 用の引数
-        let args = ["-n", "1", "-w", "1000", &ip_str];
+        let args = ["-n", &count.to_string(), "-w", &timeout_ms.to_string(), &ip_str];
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.args(&args);
     }
@@ -30,7 +30,9 @@ fn is_alive(ip: &Ipv4Addr) -> bool {
     #[cfg(not(windows))]
     {
         // Linux/Unix 用の引数
-        let args = ["-c", "1", "-W", "1", &ip_str];
+        // -W は秒単位。ミリ秒→切り上げ秒へ変換
+        let secs = std::cmp::max(1u32, (timeout_ms + 999) / 1000);
+        let args = ["-c", &count.to_string(), "-W", &secs.to_string(), &ip_str];
         cmd.args(&args);
     }
     
@@ -48,6 +50,13 @@ pub fn build_ip_list_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
     let mut scan_btn = Button::new(320, 70, 80, 30, "Scan List");
     let mut stop_btn = Button::new(410, 70, 80, 30, "Stop");
     let mut clear_btn = Button::new(240, 70, 80, 30, "Clear");
+    // Ping設定（Count / Timeout） - 同一行に整列
+    let _count_label = Frame::new(240, 100, 60, 25, "Count");
+    let mut count_inp = IntInput::new(300, 100, 60, 25, "");
+    count_inp.set_value("1");
+    let _timeout_label = Frame::new(370, 100, 80, 25, "Timeout (ms)");
+    let mut timeout_inp = IntInput::new(450, 100, 50, 25, "");
+    timeout_inp.set_value("1000");
     let mut display = TextDisplay::new(10, 230, 480, 150, "");  // Y位置を230に、高さを150に調整
     let buff = TextBuffer::default();
     println!("[Debug] IP List buffer created: {:p}", &buff);
@@ -85,6 +94,10 @@ pub fn build_ip_list_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
                 return;
             }
 
+            // 設定値の取得
+            let count: u32 = count_inp.value().parse().ok().filter(|v| *v >= 1).unwrap_or(1);
+            let timeout_ms: u32 = timeout_inp.value().parse().ok().filter(|v| *v >= 1).unwrap_or(1000);
+
             flag.store(true, Ordering::SeqCst);
             let flag_clone = flag.clone();
             let sender = s.clone();
@@ -97,7 +110,7 @@ pub fn build_ip_list_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
 
                     if let Ok(addr) = ip_str.parse::<Ipv4Addr>() {
                         println!("[Debug] Checking IP: {}", addr);
-                        let alive = is_alive(&addr);
+                        let alive = is_alive(&addr, count, timeout_ms);
                         let host_info = lookup_addr(&IpAddr::V4(addr)).unwrap_or_default();
                         println!("[Debug] IP {} - alive: {}, host: {}", addr, alive, host_info);
 

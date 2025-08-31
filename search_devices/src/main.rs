@@ -3,6 +3,7 @@ use fltk::{prelude::*, app, window::Window, group::{Tabs, Group}, enums::FrameTy
 use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
+mod tracert_tab;
 
 fn main() {
     // FLTKアプリケーションを初期化
@@ -29,6 +30,13 @@ fn main() {
     let (_running_list, mut buff_list, display_list) = ip_list_tab::build_ip_list_tab(sender.clone());
     println!("[Debug] Main received IP List buffer: {:p}", &buff_list);
     list_group.end();
+
+    // Tracertタブの構築
+    let tracert_group = Group::new(0, 25, 500, 375, "Tracert");
+    tracert_group.begin();
+    let (_running_tr, mut buff_tr, display_tr) = tracert_tab::build_tracert_tab(sender.clone());
+    println!("[Debug] Main received Tracert buffer: {:p}", &buff_tr);
+    tracert_group.end();
 
     tabs.end();
     wind.end();
@@ -69,6 +77,20 @@ fn main() {
                     }
                     
                     // UIを更新
+                    app::awake();
+                    app::redraw();
+                }
+                "TRACERT" => {
+                    println!("[Debug] Processing Tracert result");
+                    // 余分な空白行や前後空白を除去して表示
+                    let line = host_info.trim();
+                    if !line.is_empty() {
+                        buff_tr.append(&format!("{}\n", line));
+                    }
+                    if let Ok(mut display) = display_tr.lock() {
+                        display.redraw();
+                        println!("[Debug] Tracert display redrawn");
+                    }
                     app::awake();
                     app::redraw();
                 }
