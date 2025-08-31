@@ -52,6 +52,29 @@ pub fn traceroute_args_unix(max_hops: u32, timeout_ms: u32, resolve_dns: bool, t
     args
 }
 
+/// Parse a port list string like "22,80,443" or with ranges "8000-8010".
+/// Returns a deduplicated list of ports in input order; errors on invalid tokens.
+pub fn parse_ports(s: &str) -> Result<Vec<u16>, String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for raw in s.split(',') {
+        let token = raw.trim();
+        if token.is_empty() { continue; }
+        if let Some((a, b)) = token.split_once('-') {
+            let start: u16 = a.trim().parse().map_err(|_| format!("Invalid port: {}", token))?;
+            let end: u16 = b.trim().parse().map_err(|_| format!("Invalid port: {}", token))?;
+            if start > end { return Err(format!("Invalid range: {}", token)); }
+            for p in start..=end {
+                if seen.insert(p) { out.push(p); }
+            }
+        } else {
+            let p: u16 = token.parse().map_err(|_| format!("Invalid port: {}", token))?;
+            if seen.insert(p) { out.push(p); }
+        }
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,5 +131,27 @@ mod tests {
         assert_eq!(t_unix, vec!["-n","-m","16","-w","1","example.com"]);
         let t_unix2 = traceroute_args_unix(32, 1501, true, "8.8.8.8");
         assert_eq!(t_unix2, vec!["-m","32","-w","2","8.8.8.8"]);
+    }
+
+    #[test]
+    fn test_parse_ports_simple_and_range() {
+        let v = parse_ports("22, 80,443").unwrap();
+        assert_eq!(v, vec![22, 80, 443]);
+        let v2 = parse_ports("8000-8003").unwrap();
+        assert_eq!(v2, vec![8000, 8001, 8002, 8003]);
+    }
+
+    #[test]
+    fn test_parse_ports_mixed_and_dedup() {
+        let v = parse_ports("22,80,80,79-81,22").unwrap();
+        // input order, dedup
+        assert_eq!(v, vec![22, 80, 79, 81]);
+    }
+
+    #[test]
+    fn test_parse_ports_invalid() {
+        assert!(parse_ports("abc").is_err());
+        assert!(parse_ports("10-5").is_err());
+        assert!(parse_ports("65536").is_err());
     }
 }

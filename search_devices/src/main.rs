@@ -4,6 +4,7 @@ use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
 mod tracert_tab;
+mod port_tab;
 mod utils;
 
 fn main() {
@@ -38,6 +39,13 @@ fn main() {
     let (_running_tr, mut buff_tr, display_tr) = tracert_tab::build_tracert_tab(sender.clone());
     println!("[Debug] Main received Tracert buffer: {:p}", &buff_tr);
     tracert_group.end();
+
+    // Portsタブの構築
+    let ports_group = Group::new(0, 25, 500, 375, "Ports");
+    ports_group.begin();
+    let (_running_ports, mut buff_ports, display_ports) = port_tab::build_port_tab(sender.clone());
+    println!("[Debug] Main received Ports buffer: {:p}", &buff_ports);
+    ports_group.end();
 
     tabs.end();
     wind.end();
@@ -89,6 +97,18 @@ fn main() {
                     if let Ok(mut display) = display_tr.lock() {
                         display.redraw();
                         println!("[Debug] Tracert display redrawn");
+                    }
+                    app::awake();
+                    app::redraw();
+                }
+                "PORTS" => {
+                    println!("[Debug] Processing Ports result");
+                    let mark = if alive { "〇" } else { "×" };
+                    let status = if alive { "open" } else { "closed" };
+                    buff_ports.append(&format!("{:<15} {:<7} {:<12} {}\n", ip, mark, status, host_info));
+                    if let Ok(mut display) = display_ports.lock() {
+                        display.redraw();
+                        println!("[Debug] Ports display redrawn");
                     }
                     app::awake();
                     app::redraw();

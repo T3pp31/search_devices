@@ -1,6 +1,6 @@
 # Search Devices - Ping Scanner GUI
 
-このアプリケーションは、RustとFLTKを使って作られた「ネットワーク到達性確認ツール（GUI）」です。指定したネットワーク（CIDR形式）やIPアドレスリストに対して、各ホストが生きているか（ping応答）を手軽に確認できます。さらに、経路の確認（traceroute/tracert）タブも追加されました。
+このアプリケーションは、RustとFLTKを使って作られた「ネットワーク到達性確認ツール（GUI）」です。指定したネットワーク（CIDR形式）やIPアドレスリストに対して、各ホストが生きているか（ping応答）を手軽に確認できます。さらに、経路の確認（traceroute/tracert）タブと、簡易ポートチェック（TCP）タブも用意しています。
 
 ネットワーク管理やトラブルシューティングに最適です。
 
@@ -17,7 +17,8 @@
 RustとFLTKによるシンプルなGUIアプリケーションで、以下を提供します。
 - CIDR/リストに対するICMP到達性スキャン（Ping）
 - Ping設定の可変化（Count/Timeout）
-- 経路確認（Tracert/Traceroute）タブ
+- 経路確認（Tracert/Traceroute）
+- 簡易ポートチェック（TCP）
 
 ## .exeファイルのダウンロード
 
@@ -53,6 +54,17 @@ RustとFLTKによるシンプルなGUIアプリケーションで、以下を提
 3. 「Trace」で実行、結果は逐次テキスト表示欄に表示されます（空行や前後空白は除去して表示）。
 4. 「Stop」で実行中のプロセスを停止し、出力も停止します。
 
+### Portsタブ（簡易ポートチェック）
+
+1. Target（IPまたはホスト名）を入力（例: `127.0.0.1`）
+2. Timeout(ms) を設定（既定: 800ms）。TCP接続のタイムアウトです。
+3. スキャン方法を選択
+   - Common: 代表的なTCPポートをスキャン（例: 22, 80, 443, 3389 など）
+   - Custom: `22,80,443` や `8000-8010` のように入力し、任意ポートをスキャン
+4. 結果は `{Target, 〇/×, open/closed, port/tcp}` 形式で表示されます。
+   - 〇=open（接続成功）/ ×=closed（接続失敗）
+5. 「Clear」で表示をクリアできます。
+
 ## 注意事項
 
 - 大規模ネットワークではスキャン時間やリソース消費が多くなるためご注意ください。
@@ -66,6 +78,10 @@ RustとFLTKによるシンプルなGUIアプリケーションで、以下を提
   - 経路確認: Windowsは`tracert`、Linux/Unixは`traceroute`
   - Linux/Unixで`traceroute`が未導入の場合は、パッケージマネージャでインストールしてください（例: `sudo apt install traceroute`）。
   - Linuxの`ping`/`traceroute`は権限やケーパビリティに依存する場合があります。
+  - ポートチェックはOSコマンドに依存せず、TCP接続（`connect`）で判定します。
+
+- Linuxでのビルド時は、FLTKリンクに必要なライブラリ（X11関連、Pango/Cairo など）の開発パッケージが必要です。
+  - 例（Ubuntu/Debian系）: `sudo apt install libx11-dev libxext-dev libxinerama-dev libxcursor-dev libxrender-dev libxfixes-dev libxft-dev libfontconfig1-dev libpango1.0-dev libcairo2-dev`
 
 ## ビルド方法
 
@@ -105,6 +121,7 @@ cargo test
 主なテスト内容:
 - ms→sec切り上げ変換、出力行のサニタイズ
 - OS別のping/traceroute引数の組み立て検証
+- ポート文字列パーサ（`22,80,443` / `8000-8010`）の検証
 
 ## ライセンス
 
