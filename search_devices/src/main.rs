@@ -4,6 +4,7 @@ use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
 mod tracert_tab;
+mod utils;
 
 fn main() {
     // FLTKアプリケーションを初期化
@@ -82,9 +83,7 @@ fn main() {
                 }
                 "TRACERT" => {
                     println!("[Debug] Processing Tracert result");
-                    // 余分な空白行や前後空白を除去して表示
-                    let line = host_info.trim();
-                    if !line.is_empty() {
+                    if let Some(line) = crate::utils::sanitize_line(&host_info) {
                         buff_tr.append(&format!("{}\n", line));
                     }
                     if let Ok(mut display) = display_tr.lock() {
@@ -99,5 +98,16 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::sanitize_line;
+
+    #[test]
+    fn test_tracert_line_sanitization_in_main() {
+        assert_eq!(sanitize_line("   abc   "), Some("abc".into()));
+        assert!(sanitize_line("   ").is_none());
     }
 }

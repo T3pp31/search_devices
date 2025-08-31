@@ -13,6 +13,7 @@ use std::{
     io::{BufRead, BufReader},
     thread,
 };
+use crate::utils::{ms_to_secs_ceil, tracert_args_windows, traceroute_args_unix};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -102,21 +103,16 @@ pub fn build_tracert_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
                 let mut cmd = {
                     let mut c = Command::new("tracert");
                     c.creation_flags(CREATE_NO_WINDOW);
-                    if !resolve_dns { c.arg("-d"); }
-                    c.args(["-h", &max_hops.to_string()]);
-                    c.args(["-w", &timeout_ms.to_string()]);
-                    c.arg(&target_clone);
+                    let args = tracert_args_windows(max_hops, timeout_ms, resolve_dns, &target_clone);
+                    c.args(&args);
                     c
                 };
 
                 #[cfg(not(windows))]
                 let mut cmd = {
                     let mut c = Command::new("traceroute");
-                    if !resolve_dns { c.arg("-n"); }
-                    c.args(["-m", &max_hops.to_string()]);
-                    let secs = std::cmp::max(1u32, (timeout_ms + 999) / 1000);
-                    c.args(["-w", &secs.to_string()]);
-                    c.arg(&target_clone);
+                    let args = traceroute_args_unix(max_hops, timeout_ms, resolve_dns, &target_clone);
+                    c.args(&args);
                     c
                 };
 
@@ -186,4 +182,23 @@ pub fn build_tracert_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
     }
 
     (running, buff, display_ref)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::*;
+
+    #[test]
+    fn test_traceroute_args_for_tracert_tab() {
+        let w = tracert_args_windows(30, 1000, true, "8.8.8.8");
+        assert_eq!(w, vec!["-h","30","-w","1000","8.8.8.8"]);
+        let w2 = tracert_args_windows(20, 500, false, "example.com");
+        assert_eq!(w2, vec!["-d","-h","20","-w","500","example.com"]);
+
+        let u = traceroute_args_unix(16, 1, false, "example.com");
+        assert_eq!(u, vec!["-n","-m","16","-w","1","example.com"]);
+        let u2 = traceroute_args_unix(32, 1500, true, "8.8.8.8");
+        assert_eq!(u2, vec!["-m","32","-w","2","8.8.8.8"]);
+    }
 }

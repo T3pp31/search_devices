@@ -11,6 +11,7 @@ use ipnetwork::Ipv4Network;
 use dns_lookup::lookup_addr;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
+use crate::utils::{ms_to_secs_ceil, ping_args_unix, ping_args_windows};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -77,14 +78,15 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
                             #[cfg(windows)]
                             {
                                 cmd.creation_flags(CREATE_NO_WINDOW);
-                                cmd.args(&["-n", &count.to_string(), "-w", &timeout_ms.to_string(), &ip.to_string()]);
+                                let args = ping_args_windows(count, timeout_ms, &ip.to_string());
+                                cmd.args(&args);
                             }
 
                             #[cfg(not(windows))]
                             {
                                 // Linuxの-Wは秒。ミリ秒→切り上げ秒へ変換
-                                let secs = std::cmp::max(1u32, (timeout_ms + 999) / 1000);
-                                cmd.args(&["-c", &count.to_string(), "-W", &secs.to_string(), &ip.to_string()]);
+                                let args = ping_args_unix(count, timeout_ms, &ip.to_string());
+                                cmd.args(&args);
                             }
 
                             cmd.output()
@@ -108,4 +110,25 @@ pub fn build_cidr_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) -> 
         });
     }
     (running, buff)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::*;
+
+    #[test]
+    fn test_ping_args_for_cidr_tab() {
+        let a = ping_args_windows(1, 1000, "192.168.1.10");
+        assert_eq!(a, vec!["-n","1","-w","1000","192.168.1.10"]);
+        let b = ping_args_unix(3, 2500, "10.0.0.5");
+        assert_eq!(b, vec!["-c","3","-W","3","10.0.0.5"]);
+    }
+
+    #[test]
+    fn test_ms_to_secs_in_cidr() {
+        assert_eq!(ms_to_secs_ceil(1), 1);
+        assert_eq!(ms_to_secs_ceil(1000), 1);
+        assert_eq!(ms_to_secs_ceil(1001), 2);
+    }
 }

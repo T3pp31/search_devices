@@ -10,6 +10,7 @@ use std::{net::{Ipv4Addr, IpAddr}, process::Command, sync::{Arc, atomic::{Atomic
 use dns_lookup::lookup_addr;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
+use crate::utils::{ms_to_secs_ceil, ping_args_unix, ping_args_windows};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -22,7 +23,7 @@ fn is_alive(ip: &Ipv4Addr, count: u32, timeout_ms: u32) -> bool {
     #[cfg(windows)]
     {
         // Windows 用の引数
-        let args = ["-n", &count.to_string(), "-w", &timeout_ms.to_string(), &ip_str];
+        let args = ping_args_windows(count, timeout_ms, &ip_str);
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.args(&args);
     }
@@ -31,8 +32,7 @@ fn is_alive(ip: &Ipv4Addr, count: u32, timeout_ms: u32) -> bool {
     {
         // Linux/Unix 用の引数
         // -W は秒単位。ミリ秒→切り上げ秒へ変換
-        let secs = std::cmp::max(1u32, (timeout_ms + 999) / 1000);
-        let args = ["-c", &count.to_string(), "-W", &secs.to_string(), &ip_str];
+        let args = ping_args_unix(count, timeout_ms, &ip_str);
         cmd.args(&args);
     }
     
@@ -136,4 +136,18 @@ pub fn build_ip_list_tab(sender: app::Sender<(String, Ipv4Addr, bool, String)>) 
         });
     }
     (running, buff, display_ref)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::*;
+
+    #[test]
+    fn test_ping_args_for_ip_list_tab() {
+        let a = ping_args_windows(2, 1500, "1.2.3.4");
+        assert_eq!(a, vec!["-n","2","-w","1500","1.2.3.4"]);
+        let b = ping_args_unix(5, 1, "8.8.8.8");
+        assert_eq!(b, vec!["-c","5","-W","1","8.8.8.8"]);
+    }
 }
