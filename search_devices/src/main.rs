@@ -3,6 +3,8 @@ use fltk::{prelude::*, app, window::Window, group::{Tabs, Group}, enums::FrameTy
 use std::net::Ipv4Addr;
 mod cidr_tab;
 mod ip_list_tab;
+mod tracert_tab;
+mod utils;
 
 fn main() {
     // FLTKアプリケーションを初期化
@@ -29,6 +31,13 @@ fn main() {
     let (_running_list, mut buff_list, display_list) = ip_list_tab::build_ip_list_tab(sender.clone());
     println!("[Debug] Main received IP List buffer: {:p}", &buff_list);
     list_group.end();
+
+    // Tracertタブの構築
+    let tracert_group = Group::new(0, 25, 500, 375, "Tracert");
+    tracert_group.begin();
+    let (_running_tr, mut buff_tr, display_tr) = tracert_tab::build_tracert_tab(sender.clone());
+    println!("[Debug] Main received Tracert buffer: {:p}", &buff_tr);
+    tracert_group.end();
 
     tabs.end();
     wind.end();
@@ -72,10 +81,33 @@ fn main() {
                     app::awake();
                     app::redraw();
                 }
+                "TRACERT" => {
+                    println!("[Debug] Processing Tracert result");
+                    if let Some(line) = crate::utils::sanitize_line(&host_info) {
+                        buff_tr.append(&format!("{}\n", line));
+                    }
+                    if let Ok(mut display) = display_tr.lock() {
+                        display.redraw();
+                        println!("[Debug] Tracert display redrawn");
+                    }
+                    app::awake();
+                    app::redraw();
+                }
                 _ => {
                     println!("[Debug] Unknown tab_id: {}", tab_id);
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::sanitize_line;
+
+    #[test]
+    fn test_tracert_line_sanitization_in_main() {
+        assert_eq!(sanitize_line("   abc   "), Some("abc".into()));
+        assert!(sanitize_line("   ").is_none());
     }
 }
