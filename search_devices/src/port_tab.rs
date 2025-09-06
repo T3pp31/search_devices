@@ -32,7 +32,8 @@ fn is_tcp_open(ip: Ipv4Addr, port: u16, timeout_ms: u64) -> bool {
 pub fn build_port_tab(
     sender: app::Sender<(String, Ipv4Addr, bool, String)>,
 ) -> (Arc<AtomicBool>, TextBuffer, Arc<Mutex<TextDisplay>>) {
-    Frame::new(10, 30, 200, 25, "Target (host or IPv4)");
+    // Widen labels to avoid text clipping on some platforms
+    Frame::new(10, 30, 480, 25, "Target (host or IPv4)");
     let mut target_inp = Input::new(10, 70, 200, 30, "");
     target_inp.set_value("127.0.0.1");
 
@@ -40,7 +41,7 @@ pub fn build_port_tab(
     let mut scan_common_btn = Button::new(320, 70, 80, 30, "Common");
     let mut scan_custom_btn = Button::new(410, 70, 80, 30, "Custom");
 
-    let _ports_label = Frame::new(10, 110, 150, 25, "Ports (e.g. 22,80,443 or 8000-8010)");
+    let _ports_label = Frame::new(10, 110, 480, 25, "Ports (e.g. 22,80,443 or 8000-8010)");
     let mut ports_inp = Input::new(10, 140, 260, 25, "");
     ports_inp.set_value("22,80,443");
 
@@ -187,4 +188,3 @@ mod tests {
         assert!(resolve_target_ipv4("127.0.0.1").is_some());
     }
 }
-
